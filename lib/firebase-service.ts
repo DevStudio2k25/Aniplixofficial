@@ -49,9 +49,16 @@ const DOWNLOADS_COLLECTION = 'app_downloads';
 
 export async function getAllApps(): Promise<App[]> {
   const appsCol = collection(db, APPS_COLLECTION);
-  const q = query(appsCol, orderBy('featured', 'desc'), orderBy('created_at', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as App));
+  const snapshot = await getDocs(appsCol);
+  const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as App));
+  
+  // Sort by featured first, then by created_at desc
+  return apps.sort((a, b) => {
+    if (a.featured !== b.featured) {
+      return b.featured - a.featured;
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 }
 
 export async function getAppById(id: string): Promise<App | null> {
@@ -62,9 +69,14 @@ export async function getAppById(id: string): Promise<App | null> {
 
 export async function getFeaturedApps(limitCount = 6): Promise<App[]> {
   const appsCol = collection(db, APPS_COLLECTION);
-  const q = query(appsCol, where('featured', '==', 1), orderBy('created_at', 'desc'), limit(limitCount));
+  const q = query(appsCol, where('featured', '==', 1));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as App));
+  const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as App));
+  
+  // Sort by created_at desc in memory
+  return apps
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, limitCount);
 }
 
 export async function searchApps(searchQuery: string, category?: string): Promise<App[]> {
@@ -101,8 +113,14 @@ export async function getCategories(): Promise<string[]> {
 export async function addApp(app: Omit<App, 'id' | 'downloads' | 'created_at' | 'updated_at'>): Promise<App> {
   const appsCol = collection(db, APPS_COLLECTION);
   const timestamp = new Date().toISOString();
+  
+  // Clean undefined values for Firestore
+  const cleanedData = Object.fromEntries(
+    Object.entries(app).filter(([_, v]) => v !== undefined)
+  );
+
   const newAppData = {
-    ...app,
+    ...cleanedData,
     downloads: 0,
     created_at: timestamp,
     updated_at: timestamp
@@ -113,8 +131,14 @@ export async function addApp(app: Omit<App, 'id' | 'downloads' | 'created_at' | 
 
 export async function updateApp(id: string, app: Partial<App>): Promise<App> {
   const docRef = doc(db, APPS_COLLECTION, id);
+  
+  // Clean undefined values for Firestore
+  const cleanedData = Object.fromEntries(
+    Object.entries(app).filter(([_, v]) => v !== undefined)
+  );
+
   await updateDoc(docRef, {
-    ...app,
+    ...cleanedData,
     updated_at: new Date().toISOString()
   });
   const updated = await getAppById(id);
@@ -163,9 +187,12 @@ export async function recordDownload(appId: string): Promise<void> {
 
 export async function getAppRatings(appId: string): Promise<Rating[]> {
   const ratingsCol = collection(db, RATINGS_COLLECTION);
-  const q = query(ratingsCol, where('app_id', '==', appId), orderBy('created_at', 'desc'));
+  const q = query(ratingsCol, where('app_id', '==', appId));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Rating));
+  const ratings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Rating));
+  
+  // Sort by created_at desc in memory
+  return ratings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
 export async function getAppAverageRating(appId: string): Promise<{ average: number; count: number }> {
