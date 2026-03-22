@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addRating, getAppRatings, getAppAverageRating } from '@/lib/db';
+import { addRating, getAppRatings, getAppAverageRating } from '@/lib/firebase-service';
 
 export async function GET(
   request: NextRequest,
@@ -7,8 +7,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const ratings = getAppRatings(parseInt(id));
-    const ratingStats = getAppAverageRating(parseInt(id));
+    const ratings = await getAppRatings(id);
+    const ratingStats = await getAppAverageRating(id);
 
     return NextResponse.json({
       ratings,
@@ -31,7 +31,7 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid rating' }, { status: 400 });
     }
 
-    const rating = addRating(parseInt(id), data.rating, data.review);
+    const rating = await addRating(id, data.rating, data.review);
 
     return NextResponse.json(rating, { status: 201 });
   } catch (error: any) {

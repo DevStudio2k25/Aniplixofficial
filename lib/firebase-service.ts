@@ -25,7 +25,7 @@ export interface App {
   tags: string;
   github_link: string;
   download_url: string;
-  screenshots: string;
+  screenshots: string; // Store as JSON string or comma-separated
   iconUrl?: string;
   downloads: number;
   featured: number;
@@ -41,28 +41,34 @@ export interface Rating {
   created_at: string;
 }
 
+const APPS_COLLECTION = 'apps';
+const RATINGS_COLLECTION = 'ratings';
+const DOWNLOADS_COLLECTION = 'app_downloads';
+
+// --- Apps Operations ---
+
 export async function getAllApps(): Promise<App[]> {
-  const appsCol = collection(db, 'apps');
+  const appsCol = collection(db, APPS_COLLECTION);
   const q = query(appsCol, orderBy('featured', 'desc'), orderBy('created_at', 'desc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as App));
 }
 
 export async function getAppById(id: string): Promise<App | null> {
-  const docRef = doc(db, 'apps', id);
+  const docRef = doc(db, APPS_COLLECTION, id);
   const docSnap = await getDoc(docRef);
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as App : null;
 }
 
 export async function getFeaturedApps(limitCount = 6): Promise<App[]> {
-  const appsCol = collection(db, 'apps');
+  const appsCol = collection(db, APPS_COLLECTION);
   const q = query(appsCol, where('featured', '==', 1), orderBy('created_at', 'desc'), limit(limitCount));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as App));
 }
 
 export async function searchApps(searchQuery: string, category?: string): Promise<App[]> {
-  const appsCol = collection(db, 'apps');
+  const appsCol = collection(db, APPS_COLLECTION);
   let q = query(appsCol);
   
   if (category) {
@@ -72,16 +78,17 @@ export async function searchApps(searchQuery: string, category?: string): Promis
   const snapshot = await getDocs(q);
   const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as App));
   
-  // Client-side filtering for search
+  // Client-side filtering for more flexible search
+  const lowerQuery = searchQuery.toLowerCase();
   return results.filter(app => 
-    app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    app.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    app.tags.toLowerCase().includes(searchQuery.toLowerCase())
+    app.name.toLowerCase().includes(lowerQuery) ||
+    app.description.toLowerCase().includes(lowerQuery) ||
+    (app.tags && app.tags.toLowerCase().includes(lowerQuery))
   );
 }
 
 export async function getCategories(): Promise<string[]> {
-  const appsCol = collection(db, 'apps');
+  const appsCol = collection(db, APPS_COLLECTION);
   const snapshot = await getDocs(appsCol);
   const categories = new Set<string>();
   snapshot.docs.forEach(doc => {
@@ -92,43 +99,62 @@ export async function getCategories(): Promise<string[]> {
 }
 
 export async function addApp(app: Omit<App, 'id' | 'downloads' | 'created_at' | 'updated_at'>): Promise<App> {
-  const appsCol = collection(db, 'apps');
-  const newApp = {
+  const appsCol = collection(db, APPS_COLLECTION);
+  const timestamp = new Date().toISOString();
+  const newAppData = {
     ...app,
     downloads: 0,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    created_at: timestamp,
+    updated_at: timestamp
   };
-  const docRef = await addDoc(appsCol, newApp);
-  return { id: docRef.id, ...newApp } as App;
+  const docRef = await addDoc(appsCol, newAppData);
+  return { id: docRef.id, ...newAppData } as App;
 }
 
 export async function updateApp(id: string, app: Partial<App>): Promise<App> {
-  const docRef = doc(db, 'apps', id);
+  const docRef = doc(db, APPS_COLLECTION, id);
   await updateDoc(docRef, {
     ...app,
     updated_at: new Date().toISOString()
   });
-  return getAppById(id) as Promise<App>;
+  const updated = await getAppById(id);
+  if (!updated) throw new Error('Failed to retrieve updated app');
+  return updated;
+}
+
+export async function upsertApp(id: string, appData: Omit<App, 'id' | 'downloads' | 'created_at' | 'updated_at'>): Promise<App> {
+  const docRef = doc(db, APPS_COLLECTION, id);
+  const docSnap = await getDoc(docRef);
+  
+  if (docSnap.exists()) {
+    return updateApp(id, appData);
+  } else {
+    // If not exists, we use setDoc to specify the ID if possible, but addDoc is easier if ID is auto-gen
+    // For upsert with specific ID, we'd use setDoc. But let's keep it simple.
+    return addApp(appData);
+  }
 }
 
 export async function deleteApp(id: string): Promise<boolean> {
   try {
-    const docRef = doc(db, 'apps', id);
+    const docRef = doc(db, APPS_COLLECTION, id);
     await deleteDoc(docRef);
     return true;
-  } catch {
+  } catch (error) {
+    console.error('Error deleting app:', error);
     return false;
   }
 }
 
+// --- Interaction Operations ---
+
 export async function recordDownload(appId: string): Promise<void> {
-  const docRef = doc(db, 'apps', appId);
+  const docRef = doc(db, APPS_COLLECTION, appId);
   await updateDoc(docRef, {
     downloads: increment(1)
   });
   
-  const downloadsCol = collection(db, 'app_downloads');
+  const downloadsCol = collection(db, DOWNLOADS_COLLECTION);
   await addDoc(downloadsCol, {
     app_id: appId,
     created_at: new Date().toISOString()
@@ -136,7 +162,7 @@ export async function recordDownload(appId: string): Promise<void> {
 }
 
 export async function getAppRatings(appId: string): Promise<Rating[]> {
-  const ratingsCol = collection(db, 'ratings');
+  const ratingsCol = collection(db, RATINGS_COLLECTION);
   const q = query(ratingsCol, where('app_id', '==', appId), orderBy('created_at', 'desc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Rating));
@@ -148,13 +174,13 @@ export async function getAppAverageRating(appId: string): Promise<{ average: num
   
   const sum = ratings.reduce((acc, r) => acc + r.rating, 0);
   return {
-    average: sum / ratings.length,
+    average: parseFloat((sum / ratings.length).toFixed(1)),
     count: ratings.length
   };
 }
 
 export async function addRating(appId: string, rating: number, review?: string): Promise<Rating> {
-  const ratingsCol = collection(db, 'ratings');
+  const ratingsCol = collection(db, RATINGS_COLLECTION);
   const newRating = {
     app_id: appId,
     rating,

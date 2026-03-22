@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, X } from 'lucide-react';
-import type { App } from '@/lib/db';
+import type { App, Rating } from '@/lib/firebase-service';
 
 interface AppWithRating extends App {
   ratingStats?: {

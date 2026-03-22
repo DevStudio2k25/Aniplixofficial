@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
 import Image from 'next/image';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 interface ImageUploadProps {
   value?: string;
@@ -41,67 +42,19 @@ export function ImageUpload({ value, onChange, onRemove, disabled }: ImageUpload
 
     setUploading(true);
     try {
-      // Check if Cloudinary is configured
-      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-      const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-      if (!cloudName || cloudName === 'your-cloud-name' || !uploadPreset) {
-        // Fallback: Use data URL
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const dataUrl = e.target?.result as string;
-          onChange(dataUrl);
-          setSelectedFile(null);
-        };
-        reader.readAsDataURL(selectedFile);
-        return;
-      }
-
-      try {
-        // Upload to Cloudinary
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('upload_preset', uploadPreset);
-
-        const response = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-          {
-            method: 'POST',
-            body: formData,
-          }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok || data.error) {
-          console.warn('Cloudinary upload failed, using fallback:', data.error);
-          // Fallback to data URL
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const dataUrl = e.target?.result as string;
-            onChange(dataUrl);
-            setSelectedFile(null);
-          };
-          reader.readAsDataURL(selectedFile);
-          return;
-        }
-
-        onChange(data.secure_url);
-        setSelectedFile(null);
-      } catch (error) {
-        console.error('Upload failed, using fallback:', error);
-        // Fallback to data URL
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const dataUrl = e.target?.result as string;
-          onChange(dataUrl);
-          setSelectedFile(null);
-        };
-        reader.readAsDataURL(selectedFile);
-      }
+      const url = await uploadToCloudinary(selectedFile);
+      onChange(url);
+      setSelectedFile(null);
     } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Failed to upload image. Please try again.');
+      console.error('Upload failed, using fallback:', error);
+      // Fallback to data URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        onChange(dataUrl);
+        setSelectedFile(null);
+      };
+      reader.readAsDataURL(selectedFile);
     } finally {
       setUploading(false);
     }

@@ -6,7 +6,7 @@ import { Header } from '@/components/header';
 import { AppCard } from '@/components/app-card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Download } from 'lucide-react';
-import type { App } from '@/lib/db';
+import type { App } from '@/lib/firebase-service';
 
 interface AppWithRating extends App {
   ratingStats?: {

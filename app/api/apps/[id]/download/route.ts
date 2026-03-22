@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAppById, recordDownload } from '@/lib/db';
+import { getAppById, recordDownload } from '@/lib/firebase-service';
 
 export async function GET(
   request: NextRequest,
@@ -7,14 +7,14 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const app = getAppById(parseInt(id));
+    const app = await getAppById(id);
 
-    if (!app) {
-      return NextResponse.json({ error: 'App not found' }, { status: 404 });
+    if (!app || !app.download_url) {
+      return NextResponse.json({ error: 'App or download URL not found' }, { status: 404 });
     }
 
     // Record the download
-    recordDownload(parseInt(id));
+    await recordDownload(id);
 
     // Redirect to the download URL
     return NextResponse.redirect(app.download_url, { status: 302 });

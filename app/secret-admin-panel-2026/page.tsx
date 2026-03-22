@@ -12,8 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ImageUpload } from '@/components/image-upload';
 import { MultiImageUpload } from '@/components/multi-image-upload';
 import { Trash2, Edit2 } from 'lucide-react';
-import type { App } from '@/lib/db';
-import { addAppDetail, updateAppDetail, upsertAppDetail } from '@/lib/firestore';
+import type { App } from '@/lib/firebase-service';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -23,7 +22,12 @@ export default function AdminPage() {
 
   const [apps, setApps] = useState<App[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Form state
+  // ...
+  // (omitting formData for brevity in target but I should be careful)
+  // Let's just replace the whole relevant section
 
   // Form state
   const [formData, setFormData] = useState({
@@ -140,30 +144,6 @@ export default function AdminPage() {
 
       const savedApp = await response.json();
 
-      // Also save to Firebase
-      try {
-        const firebaseData = {
-          name: formData.name,
-          link: formData.download_url,
-          description: formData.description,
-          category: formData.category,
-          tags: formData.tags ? formData.tags.split(',').map(t => t.trim()) : [],
-          iconUrl: formData.iconUrl,
-          author: formData.author,
-          version: formData.version,
-        };
-
-        if (editingId) {
-          // Use upsert for editing - will update if exists, create if not
-          await upsertAppDetail(editingId.toString(), firebaseData);
-        } else {
-          await addAppDetail(firebaseData);
-        }
-      } catch (firebaseError) {
-        console.error('Firebase save failed:', firebaseError);
-        // Continue anyway, as the main database save succeeded
-      }
-
       if (editingId) {
         setApps(apps.map(a => (a.id === editingId ? savedApp : a)));
         setEditingId(null);
@@ -208,7 +188,7 @@ export default function AdminPage() {
       github_link: app.github_link || '',
       download_url: app.download_url,
       screenshots: screenshots,
-      iconUrl: (app as any).iconUrl || '', // Added for app icon
+      iconUrl: app.iconUrl || '',
       featured: app.featured,
     });
     
@@ -216,7 +196,7 @@ export default function AdminPage() {
     setActiveTab('add');
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this app?')) return;
 
     try {
@@ -251,8 +231,8 @@ export default function AdminPage() {
       tags: '',
       github_link: '',
       download_url: '',
-      screenshots: [], // Reset to empty array
-      iconUrl: '', // Added for app icon
+      screenshots: [],
+      iconUrl: '',
       featured: 0,
     });
     setEditingId(null);

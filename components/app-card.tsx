@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Star, Download, ExternalLink } from 'lucide-react';
-import type { App } from '@/lib/db';
+import type { App } from '@/lib/firebase-service';
 
 interface AppCardProps {
   app: App;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAppById, updateApp, deleteApp, getAppRatings, getAppAverageRating } from '@/lib/db';
+import { getAppById, updateApp, deleteApp, getAppRatings, getAppAverageRating } from '@/lib/firebase-service';
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '2026apps4all';
 
@@ -9,14 +9,14 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const app = getAppById(parseInt(id));
+    const app = await getAppById(id);
 
     if (!app) {
       return NextResponse.json({ error: 'App not found' }, { status: 404 });
     }
 
-    const ratings = getAppRatings(parseInt(id));
-    const ratingStats = getAppAverageRating(parseInt(id));
+    const ratings = await getAppRatings(id);
+    const ratingStats = await getAppAverageRating(id);
 
     return NextResponse.json({
       app,
@@ -40,7 +40,7 @@ export async function PUT(
 
     const { id } = await params;
     const data = await request.json();
-    const app = updateApp(parseInt(id), data);
+    const app = await updateApp(id, data);
 
     return NextResponse.json(app);
   } catch (error: any) {
@@ -59,7 +59,7 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const success = deleteApp(parseInt(id));
+    const success = await deleteApp(id);
 
     if (!success) {
       return NextResponse.json({ error: 'App not found' }, { status: 404 });

@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Image as ImageIcon, Plus, Upload } from 'lucide-react';
 import Image from 'next/image';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 interface MultiImageUploadProps {
   value?: string[];
@@ -61,49 +62,9 @@ export function MultiImageUpload({ value = [], onChange, disabled, maxImages = 5
 
     try {
       for (const file of selectedFiles) {
-        // Check if Cloudinary is configured
-        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-        const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-        if (!cloudName || cloudName === 'your-cloud-name' || !uploadPreset) {
-          // Fallback: Use data URL
-          const reader = new FileReader();
-          const dataUrl = await new Promise<string>((resolve) => {
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.readAsDataURL(file);
-          });
-          newUrls.push(dataUrl);
-          continue;
-        }
-
         try {
-          // Upload to Cloudinary
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('upload_preset', uploadPreset);
-
-          const response = await fetch(
-            `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-            {
-              method: 'POST',
-              body: formData,
-            }
-          );
-
-          const data = await response.json();
-
-          if (!response.ok || data.error) {
-            console.warn('Cloudinary upload failed for', file.name, '- using fallback');
-            // Fallback to data URL
-            const reader = new FileReader();
-            const dataUrl = await new Promise<string>((resolve) => {
-              reader.onload = (e) => resolve(e.target?.result as string);
-              reader.readAsDataURL(file);
-            });
-            newUrls.push(dataUrl);
-          } else {
-            newUrls.push(data.secure_url);
-          }
+          const url = await uploadToCloudinary(file);
+          newUrls.push(url);
         } catch (error) {
           console.error('Upload failed for', file.name, '- using fallback');
           // Fallback to data URL

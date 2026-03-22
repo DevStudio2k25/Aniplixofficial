@@ -5,27 +5,27 @@ import {
   getCategories,
   addApp,
   App,
-} from '@/lib/db';
+} from '@/lib/firebase-service';
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '2026apps4all';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get('q');
+    const queryStr = searchParams.get('q');
     const category = searchParams.get('category');
     const getCats = searchParams.get('categories');
 
     if (getCats === 'true') {
-      const categories = getCategories();
+      const categories = await getCategories();
       return NextResponse.json({ categories });
     }
 
     let apps: App[];
-    if (query) {
-      apps = searchApps(query, category || undefined);
+    if (queryStr) {
+      apps = await searchApps(queryStr, category || undefined);
     } else {
-      apps = getAllApps();
+      apps = await getAllApps();
     }
 
     return NextResponse.json({ apps });
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const app = addApp({
+    const app = await addApp({
       name: data.name,
       description: data.description,
       author: data.author,
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       github_link: data.github_link || '',
       download_url: data.download_url,
       screenshots: data.screenshots || '',
-      iconUrl: data.iconUrl || null,
+      iconUrl: data.iconUrl || undefined,
       featured: data.featured || 0,
     });
 

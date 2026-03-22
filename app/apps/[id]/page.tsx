@@ -10,15 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { ScreenshotGallery } from '@/components/screenshot-gallery';
 import { Star, Download, Github, ArrowLeft } from 'lucide-react';
-import type { App } from '@/lib/db';
-
-interface Rating {
-  id: number;
-  app_id: number;
-  rating: number;
-  review: string | null;
-  created_at: string;
-}
+import type { App, Rating } from '@/lib/firebase-service';
 
 export default function AppDetailPage() {
   const params = useParams();
