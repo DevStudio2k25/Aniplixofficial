@@ -38,8 +38,7 @@ A beautiful, modern web application for discovering, browsing, and downloading a
 - **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS 4
-- **Database**: SQLite (better-sqlite3)
-- **Cloud Storage**: Firebase Firestore
+- **Database**: Firebase Firestore
 - **Image CDN**: Cloudinary
 - **UI Components**: Radix UI
 - **Icons**: Lucide React
@@ -116,7 +115,7 @@ http://localhost:3000
 │   ├── header.tsx               # Navigation header
 │   └── screenshot-gallery.tsx   # Screenshot viewer
 ├── lib/                         # Utilities
-│   ├── db.ts                    # SQLite database
+│   ├── db.ts                    # Database operations (Firebase)
 │   ├── firebase.ts              # Firebase config
 │   └── firestore.ts             # Firestore operations
 ├── public/                      # Static assets

@@ -94,7 +94,7 @@ https://aniplixofficial.vercel.app/secret-admin-panel-2026
 
 ## 🗄️ Database Setup
 
-Your SQLite database will be created automatically on first run.
+Your Firebase Firestore database will be used for data storage.
 
 **Important**: Vercel uses serverless functions, so:
 - Database is created in `/tmp` directory
