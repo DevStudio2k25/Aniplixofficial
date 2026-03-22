@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAppById, updateApp, deleteApp, getAppRatings, getAppAverageRating } from '@/lib/firebase-service';
+import { getAppById, updateApp, deleteApp, getAppRatings, getAppAverageRating, App } from '@/lib/firebase-service';
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '2026apps4all';
 
@@ -40,7 +40,22 @@ export async function PUT(
 
     const { id } = await params;
     const data = await request.json();
-    const app = await updateApp(id, data);
+    
+    // Explicitly pick fields to update
+    const updateData: Partial<App> = {
+      name: data.name,
+      description: data.description,
+      author: data.author,
+      version: data.version,
+      category: data.category,
+      tags: data.tags,
+      download_url: data.download_url,
+      screenshots: data.screenshots,
+      iconUrl: data.iconUrl,
+      featured: data.featured,
+    };
+
+    const app = await updateApp(id, updateData);
 
     return NextResponse.json(app);
   } catch (error: any) {

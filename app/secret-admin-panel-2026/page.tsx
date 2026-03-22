@@ -37,7 +37,6 @@ export default function AdminPage() {
     version: '',
     category: '',
     tags: '',
-    github_link: '',
     download_url: '',
     screenshots: [] as string[], // Changed to array for multiple screenshots
     iconUrl: '', // Added for app icon
@@ -127,6 +126,7 @@ export default function AdminPage() {
         screenshots: JSON.stringify(formData.screenshots)
       };
 
+      console.log('Sending request to:', url, 'Method:', method);
       const response = await fetch(url, {
         method,
         headers: {
@@ -136,29 +136,33 @@ export default function AdminPage() {
         body: JSON.stringify(apiData),
       });
 
+      console.log('Response status:', response.status);
+      const data = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
+        console.error('Submission failed with status:', response.status, 'Data:', data);
         setFormError(data.error || 'Failed to save app');
         return;
       }
 
-      const savedApp = await response.json();
+      console.log('Submission successful. Saved app:', data);
+      const savedApp = data;
 
       if (editingId) {
-        setApps(apps.map(a => (a.id === editingId ? savedApp : a)));
+        setApps(prevApps => prevApps.map(a => (a.id === editingId ? savedApp : a)));
         setEditingId(null);
       } else {
-        setApps([...apps, savedApp]);
+        setApps(prevApps => [...prevApps, savedApp]);
       }
 
       setFormSuccess(editingId ? 'App updated successfully!' : 'App added successfully!');
       resetForm();
-      setActiveTab('manage'); // Go back to manage tab
+      setActiveTab('manage');
 
       setTimeout(() => setFormSuccess(''), 3000);
-    } catch (error) {
-      console.error('Error saving app:', error);
-      setFormError('An error occurred while saving the app');
+    } catch (error: any) {
+      console.error('Catch error in handleSubmit:', error);
+      setFormError(error.message || 'An error occurred while saving the app');
     } finally {
       setSubmitting(false);
     }
@@ -185,7 +189,6 @@ export default function AdminPage() {
       version: app.version,
       category: app.category,
       tags: app.tags || '',
-      github_link: app.github_link || '',
       download_url: app.download_url,
       screenshots: screenshots,
       iconUrl: app.iconUrl || '',
@@ -471,7 +474,7 @@ export default function AdminPage() {
                       />
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-1">
                       <div>
                         <label className="text-sm font-medium block mb-2">Download URL *</label>
                         <Input
@@ -481,16 +484,6 @@ export default function AdminPage() {
                           }
                           placeholder="https://github.com/user/app/releases/download/..."
                           required
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium block mb-2">GitHub Link</label>
-                        <Input
-                          value={formData.github_link}
-                          onChange={(e) =>
-                            setFormData({ ...formData, github_link: e.target.value })
-                          }
-                          placeholder="https://github.com/user/app"
                         />
                       </div>
                     </div>

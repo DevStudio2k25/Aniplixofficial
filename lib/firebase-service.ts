@@ -23,7 +23,6 @@ export interface App {
   version: string;
   category: string;
   tags: string;
-  github_link: string;
   download_url: string;
   screenshots: string; // Store as JSON string or comma-separated
   iconUrl?: string;
@@ -125,6 +124,8 @@ export async function addApp(app: Omit<App, 'id' | 'downloads' | 'created_at' | 
     created_at: timestamp,
     updated_at: timestamp
   };
+  
+  console.log('Firebase: addApp data:', newAppData);
   const docRef = await addDoc(appsCol, newAppData);
   return { id: docRef.id, ...newAppData } as App;
 }

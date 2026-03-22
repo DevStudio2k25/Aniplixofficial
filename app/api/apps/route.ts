@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
       version: data.version,
       category: data.category,
       tags: data.tags || '',
-      github_link: data.github_link || '',
       download_url: data.download_url,
       screenshots: data.screenshots || '',
       iconUrl: data.iconUrl || undefined,

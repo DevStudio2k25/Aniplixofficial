@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { ScreenshotGallery } from '@/components/screenshot-gallery';
-import { Star, Download, Github, ArrowLeft } from 'lucide-react';
+import { Star, Download, ArrowLeft } from 'lucide-react';
 import type { App, Rating } from '@/lib/firebase-service';
 
 export default function AppDetailPage() {
@@ -258,14 +258,6 @@ export default function AppDetailPage() {
                 <p className="text-sm text-muted-foreground">Download and start using it right away</p>
               </div>
               <div className="flex items-center gap-3">
-                {app.github_link && (
-                  <a href={app.github_link} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" className="gap-2">
-                      <Github className="h-4 w-4" />
-                      GitHub
-                    </Button>
-                  </a>
-                )}
                 <Button onClick={handleDownload} className="gap-2">
                   <Download className="h-4 w-4" />
                   Download
