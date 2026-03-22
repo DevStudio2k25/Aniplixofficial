@@ -4,17 +4,16 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": "20.x"
+    "node": "18.x"
   },
   "scripts": {
-    "dev": "node scripts/init-db.js && next dev",
-    "build": "node scripts/init-db.js && next build",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint ."
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
-    "@neondatabase/serverless": "^1.0.2",
     "@radix-ui/react-accordion": "1.2.12",
     "@radix-ui/react-alert-dialog": "1.1.15",
     "@radix-ui/react-aspect-ratio": "1.1.8",

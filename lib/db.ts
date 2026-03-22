@@ -1,18 +1,22 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-
-let db: Database.Database | null = null;
-
-export function getDb() {
-  if (!db) {
-    const dbPath = path.join(process.cwd(), 'data', 'apps.db');
-    db = new Database(dbPath);
-  }
-  return db;
-}
+import { db } from './firebase';
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  getDoc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where, 
+  orderBy, 
+  limit,
+  increment,
+  Timestamp 
+} from 'firebase/firestore';
 
 export interface App {
-  id: number;
+  id: string;
   name: string;
   description: string;
   author: string;
@@ -22,7 +26,7 @@ export interface App {
   github_link: string;
   download_url: string;
   screenshots: string;
-  iconUrl?: string; // Added iconUrl field
+  iconUrl?: string;
   downloads: number;
   featured: number;
   created_at: string;
@@ -30,137 +34,133 @@ export interface App {
 }
 
 export interface Rating {
-  id: number;
-  app_id: number;
+  id: string;
+  app_id: string;
   rating: number;
   review: string | null;
   created_at: string;
 }
 
-export function getAllApps(): App[] {
-  const database = getDb();
-  const stmt = database.prepare('SELECT * FROM apps ORDER BY featured DESC, created_at DESC');
-  return stmt.all() as App[];
+export async function getAllApps(): Promise<App[]> {
+  const appsCol = collection(db, 'apps');
+  const q = query(appsCol, orderBy('featured', 'desc'), orderBy('created_at', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as App));
 }
 
-export function getAppById(id: number): App | null {
-  const database = getDb();
-  const stmt = database.prepare('SELECT * FROM apps WHERE id = ?');
-  return (stmt.get(id) as App) || null;
+export async function getAppById(id: string): Promise<App | null> {
+  const docRef = doc(db, 'apps', id);
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as App : null;
 }
 
-export function getFeaturedApps(limit = 6): App[] {
-  const database = getDb();
-  const stmt = database.prepare('SELECT * FROM apps WHERE featured = 1 ORDER BY created_at DESC LIMIT ?');
-  return stmt.all(limit) as App[];
+export async function getFeaturedApps(limitCount = 6): Promise<App[]> {
+  const appsCol = collection(db, 'apps');
+  const q = query(appsCol, where('featured', '==', 1), orderBy('created_at', 'desc'), limit(limitCount));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as App));
 }
 
-export function searchApps(query: string, category?: string): App[] {
-  const database = getDb();
-  let sql = 'SELECT * FROM apps WHERE (name LIKE ? OR description LIKE ? OR tags LIKE ?)';
-  const params: any[] = [`%${query}%`, `%${query}%`, `%${query}%`];
-
-  if (category) {
-    sql += ' AND category = ?';
-    params.push(category);
-  }
-
-  sql += ' ORDER BY featured DESC, created_at DESC';
-  const stmt = database.prepare(sql);
-  return stmt.all(...params) as App[];
-}
-
-export function getCategories(): string[] {
-  const database = getDb();
-  const stmt = database.prepare('SELECT DISTINCT category FROM apps ORDER BY category');
-  const results = stmt.all() as { category: string }[];
-  return results.map(r => r.category);
-}
-
-export function addApp(app: Omit<App, 'id' | 'downloads' | 'created_at' | 'updated_at'>): App {
-  const database = getDb();
-  const stmt = database.prepare(
-    'INSERT INTO apps (name, description, author, version, category, tags, github_link, download_url, screenshots, iconUrl, featured) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  );
-  const result = stmt.run(
-    app.name,
-    app.description,
-    app.author,
-    app.version,
-    app.category,
-    app.tags,
-    app.github_link,
-    app.download_url,
-    app.screenshots,
-    app.iconUrl || null,
-    app.featured || 0
-  );
+export async function searchApps(searchQuery: string, category?: string): Promise<App[]> {
+  const appsCol = collection(db, 'apps');
+  let q = query(appsCol);
   
-  return getAppById(result.lastInsertRowid as number)!;
+  if (category) {
+    q = query(appsCol, where('category', '==', category));
+  }
+  
+  const snapshot = await getDocs(q);
+  const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as App));
+  
+  // Client-side filtering for search
+  return results.filter(app => 
+    app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    app.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    app.tags.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 }
 
-export function updateApp(id: number, app: Partial<App>): App {
-  const database = getDb();
-  const updates: string[] = [];
-  const params: any[] = [];
-
-  Object.entries(app).forEach(([key, value]) => {
-    if (key !== 'id' && key !== 'created_at') {
-      updates.push(`${key} = ?`);
-      params.push(value);
-    }
+export async function getCategories(): Promise<string[]> {
+  const appsCol = collection(db, 'apps');
+  const snapshot = await getDocs(appsCol);
+  const categories = new Set<string>();
+  snapshot.docs.forEach(doc => {
+    const data = doc.data();
+    if (data.category) categories.add(data.category);
   });
-
-  params.push(id);
-  const sql = `UPDATE apps SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
-  const stmt = database.prepare(sql);
-  stmt.run(...params);
-
-  return getAppById(id)!;
+  return Array.from(categories).sort();
 }
 
-export function deleteApp(id: number): boolean {
-  const database = getDb();
-  const stmt = database.prepare('DELETE FROM apps WHERE id = ?');
-  const result = stmt.run(id);
-  return (result.changes || 0) > 0;
+export async function addApp(app: Omit<App, 'id' | 'downloads' | 'created_at' | 'updated_at'>): Promise<App> {
+  const appsCol = collection(db, 'apps');
+  const newApp = {
+    ...app,
+    downloads: 0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+  const docRef = await addDoc(appsCol, newApp);
+  return { id: docRef.id, ...newApp } as App;
 }
 
-export function recordDownload(appId: number): void {
-  const database = getDb();
-  const stmt = database.prepare('INSERT INTO app_downloads (app_id) VALUES (?)');
-  stmt.run(appId);
-
-  const updateStmt = database.prepare('UPDATE apps SET downloads = downloads + 1 WHERE id = ?');
-  updateStmt.run(appId);
+export async function updateApp(id: string, app: Partial<App>): Promise<App> {
+  const docRef = doc(db, 'apps', id);
+  await updateDoc(docRef, {
+    ...app,
+    updated_at: new Date().toISOString()
+  });
+  return getAppById(id) as Promise<App>;
 }
 
-export function getAppRatings(appId: number): Rating[] {
-  const database = getDb();
-  const stmt = database.prepare('SELECT * FROM ratings WHERE app_id = ? ORDER BY created_at DESC');
-  return stmt.all(appId) as Rating[];
+export async function deleteApp(id: string): Promise<boolean> {
+  try {
+    const docRef = doc(db, 'apps', id);
+    await deleteDoc(docRef);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-export function getAppAverageRating(appId: number): { average: number; count: number } {
-  const database = getDb();
-  const stmt = database.prepare('SELECT AVG(rating) as average, COUNT(*) as count FROM ratings WHERE app_id = ?');
-  const result = stmt.get(appId) as any;
+export async function recordDownload(appId: string): Promise<void> {
+  const docRef = doc(db, 'apps', appId);
+  await updateDoc(docRef, {
+    downloads: increment(1)
+  });
+  
+  const downloadsCol = collection(db, 'app_downloads');
+  await addDoc(downloadsCol, {
+    app_id: appId,
+    created_at: new Date().toISOString()
+  });
+}
+
+export async function getAppRatings(appId: string): Promise<Rating[]> {
+  const ratingsCol = collection(db, 'ratings');
+  const q = query(ratingsCol, where('app_id', '==', appId), orderBy('created_at', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Rating));
+}
+
+export async function getAppAverageRating(appId: string): Promise<{ average: number; count: number }> {
+  const ratings = await getAppRatings(appId);
+  if (ratings.length === 0) return { average: 0, count: 0 };
+  
+  const sum = ratings.reduce((acc, r) => acc + r.rating, 0);
   return {
-    average: result.average ? parseFloat(result.average) : 0,
-    count: result.count || 0,
+    average: sum / ratings.length,
+    count: ratings.length
   };
 }
 
-export function addRating(appId: number, rating: number, review?: string): Rating {
-  const database = getDb();
-  const stmt = database.prepare('INSERT INTO ratings (app_id, rating, review) VALUES (?, ?, ?)');
-  const result = stmt.run(appId, rating, review || null);
-  
-  return {
-    id: result.lastInsertRowid as number,
+export async function addRating(appId: string, rating: number, review?: string): Promise<Rating> {
+  const ratingsCol = collection(db, 'ratings');
+  const newRating = {
     app_id: appId,
     rating,
     review: review || null,
-    created_at: new Date().toISOString(),
+    created_at: new Date().toISOString()
   };
+  const docRef = await addDoc(ratingsCol, newRating);
+  return { id: docRef.id, ...newRating };
 }
