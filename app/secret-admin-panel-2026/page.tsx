@@ -196,8 +196,14 @@ export default function AdminPage() {
     setActiveTab('add');
   };
 
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // ... (inside component)
+
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this app?')) return;
+    // Confirmation handled by UI state now
+    setFormError('');
+    setSubmitting(true);
 
     try {
       const response = await fetch(`/api/apps/${id}`, {
@@ -208,16 +214,20 @@ export default function AdminPage() {
       });
 
       if (!response.ok) {
-        setFormError('Failed to delete app');
+        const errorData = await response.json();
+        setFormError(errorData.error || 'Failed to delete app');
         return;
       }
 
-      setApps(apps.filter(a => a.id !== id));
+      setApps(prevApps => prevApps.filter(a => a.id !== id));
+      setDeleteId(null);
       setFormSuccess('App deleted successfully!');
       setTimeout(() => setFormSuccess(''), 3000);
     } catch (error) {
       console.error('Error deleting app:', error);
       setFormError('An error occurred while deleting the app');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -319,27 +329,51 @@ export default function AdminPage() {
                             {app.author} • v{app.version} • {app.downloads} downloads
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {app.featured === 1 && (
-                            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
-                              Featured
-                            </span>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(app)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDelete(app.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                          <div className="flex items-center gap-2">
+                            {app.featured === 1 && (
+                              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
+                                Featured
+                              </span>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(app)}
+                              disabled={submitting}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            
+                            {deleteId === app.id ? (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDelete(app.id)}
+                                  disabled={submitting}
+                                >
+                                  Confirm
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setDeleteId(null)}
+                                  disabled={submitting}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setDeleteId(app.id)}
+                                disabled={submitting}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                       </div>
                     </Card>
                   ))}

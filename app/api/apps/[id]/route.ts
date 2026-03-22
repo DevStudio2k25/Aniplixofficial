@@ -59,7 +59,10 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    console.log('DELETE request received for ID:', id);
+    
     const success = await deleteApp(id);
+    console.log('Delete operation success:', success);
 
     if (!success) {
       return NextResponse.json({ error: 'App not found' }, { status: 404 });
