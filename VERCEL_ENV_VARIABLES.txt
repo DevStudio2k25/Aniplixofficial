@@ -1,0 +1,38 @@
+# ============================================
+# VERCEL ENVIRONMENT VARIABLES
+# Copy-paste these in Vercel Dashboard
+# ============================================
+
+# Admin Password (REQUIRED)
+# Change this to your secure password
+ADMIN_PASSWORD=2026apps4all
+
+# Cloudinary Configuration (OPTIONAL - for image uploads)
+# Get these from https://cloudinary.com dashboard
+# If you don't have Cloudinary, leave these empty - app will still work
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your-cloud-name
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=apps4all
+
+# ============================================
+# HOW TO ADD IN VERCEL:
+# ============================================
+# 1. Go to your Vercel project
+# 2. Click "Settings" tab
+# 3. Click "Environment Variables" in sidebar
+# 4. Add each variable:
+#    - Name: ADMIN_PASSWORD
+#    - Value: 2026apps4all
+#    - Environment: Production, Preview, Development (select all)
+# 5. Click "Save"
+# 6. Repeat for other variables
+# 7. Redeploy your project
+# ============================================
+
+# ============================================
+# IMPORTANT NOTES:
+# ============================================
+# - ADMIN_PASSWORD is REQUIRED for admin panel to work
+# - Cloudinary variables are OPTIONAL
+# - Without Cloudinary, images will use local preview mode
+# - Change ADMIN_PASSWORD to something secure!
+# ============================================
